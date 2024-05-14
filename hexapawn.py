@@ -22,7 +22,7 @@ For reference, the output vector will be composed of 9 values, one for each cell
 A 0 indicates that moving a pawn to that cell is not a valid move, while a 1 indicates the moving a pawn there is optimal.
 """
 
-"""Part 1 : Formalization of Hexapawn"""
+## -------- Part 1 : Formalization of Hexapawn ---------- ##
 initial_state = [0, -1, -1, -1, 0, 0, 0, 1, 1, 1]
 
 def to_move(state):
@@ -158,3 +158,64 @@ def utility(state):
     ## Would add it to the terminal state to check if neither player can make a move?
     
     return score
+
+## ------------- Part 2 : Minimax search ---------------------- ## 
+def minimax_search(state):
+    "Return the optimal action to be taken by the current player given the current state"
+
+    # pawn_turn = to_move(state) - in the pseudo code but seems unnecessary?
+    value, action = max_value(state, state)     # find the best action to take
+    
+    return action
+    
+def max_value(game, state):
+    "Return the maximum utility value and action for the current player and state"
+    
+    if is_terminal(state):              # if the state is terminal, return the value of the state and no action
+        return utility(state), None
+
+    max = -np.inf
+    for a in actions(state):            # iterate through all possible actions
+        temp_val, temp_action = min_value(state, result(state, a)) # find min value and action opponent to take
+        if temp_val > max:              # if the value of the state is greater than the current max, store the value & action
+            max, action = temp_val, a
+            
+    return max, action
+
+def min_value(game, state):
+    "Return the minimum utility value and action for the opponent"
+    if is_terminal(state):              # if the state is terminal, return the value of the state and no action
+        return utility(state), None
+
+    min = np.inf
+    for a in actions(state):            # iterate through all possible actions
+        temp_val, temp_action = max_value(state, result(state, a))
+        if temp_val < min:              # if the value of the state is less than the current min, store the value & action
+            min, action = temp_val, a
+            
+    return min, action
+
+# build the policy table
+def generate_boards(state, boards):
+    "Return all possible states given the current state"
+    
+    for poss_action in actions(state):                              # iterate through all possible actions
+        boards.append(result(state, poss_action))                   # generate and store the resulting board given an action
+        if not is_terminal(result(state, poss_action)):             # check if the resulting board is not a terminal state
+            generate_boards(result(state, poss_action), boards)     # if not, recursively call generate boards to find the successive boards given the new board
+    
+    return boards
+
+def policy_table(state):
+    "Return a policy table containing each state along with the value and every action that achieves such value"
+    
+    table = {}                                  # initialize a dict for the policy table
+    for board in generate_boards(state, []):    # iterate through every possible board given a state
+        action = minimax_search(board)          # find best action to be taken for the current board (state)
+        initial_value = utility(board)          # get the initial value of the board (state)
+        
+        new_value = initial_value if action is None else utility(result(board, action)) # if an action exists, find the value of the board following that action
+        
+        table[str(board)] = initial_value, new_value, action # add board to the policy table along with initial, new, and action
+        
+    return table
