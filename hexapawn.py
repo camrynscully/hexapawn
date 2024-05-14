@@ -219,3 +219,38 @@ def policy_table(state):
         table[str(board)] = initial_value, new_value, action # add board to the policy table along with initial, new, and action
         
     return table
+
+## ---------------- Part 3: Graph Structure ------------------ ##
+class Layer:
+    def __init__(self, neurons, num_inputs):
+        "Initialize a layer in the neural network"
+        np.random.seed(10)
+        self.neurons = neurons
+        self.weights = 2 * np.random.random((num_inputs, neurons)) - 1  # multiply by 2 to get range to be [0.0, 2.0] 
+        self.biases = 2 * np.random.random(neurons) - 1                 # subtract 1 to get range to be [-1.0, 1.0] 
+        
+class NeuralNetwork:
+    def __init__(self, num_layers, layers):
+        "Initialize a neural network with the provided number of layers"
+        for i in range(num_layers):
+            print(i)
+            setattr(self, f"layer{i+1}", layers[i])
+
+## -------------- Part 4: Classify Function ----------------- ##
+def classify(network, inputs, activation_function):
+    "Returns the output of each layer of the provided neural network using the given activation function"
+    
+    # compute the output of each layer
+    output1 = activation_function(np.dot(network.layer1.weights, inputs)) + network.layer1.biases
+    output2 = activation_function(np.dot(network.layer2.weights, output1)) + network.layer2.biases
+    
+    return output1, output2
+
+# activation functions
+def sigmoid(x):
+    "Sigmoid (or Logistic) - Returns a value between 0 and 1 provided x"
+    return 1 / (1 + np.exp(-x))
+
+def ReLU(x):
+    "Rectified Linear Unit - Returns 0 if x is negative, otherwise returns x"
+    return np.maximum(0, x)

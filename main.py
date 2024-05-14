@@ -28,3 +28,28 @@ for state in policy:
     vals = policy[state]
     print("State:", state, "\nInitial Value:", vals[0], ", New Value:", vals[1], ", Action:", vals[2])
     print("\n")
+    
+# Part 3
+layer1 = Layer(neurons=2, num_inputs=2)
+layer2 = Layer(neurons=2, num_inputs=2)
+network = NeuralNetwork(num_layers=2, layers=[layer1, layer2])
+print("---------------Neural Network-----------------\n")
+print("Layer 1 - Weights:", network.layer1.weights, "Biases:", network.layer1.biases)
+print("Layer 2 - Weights:", network.layer2.weights, "Biases:", network.layer2.biases)
+
+# Part 4
+x1 = -1
+x2 = 0
+x3 = 1
+x4 = 100
+
+inputs = np.array([0, 1])
+
+print("Sigmoid - Scalar Input:", x1, "Output:", sigmoid(x1))
+print("Sigmoid - Vector Input:", inputs, "Output:", sigmoid(inputs))
+
+print("ReLU - Scalar Input:", x1, "Output:", ReLU(x1))
+print("ReLU - Vector Input:", inputs, "Output:", ReLU(inputs))
+
+print("ReLU NN Output: ", classify(network, inputs, ReLU))
+print("Sigmoid NN Output: ", classify(network, inputs, sigmoid))
