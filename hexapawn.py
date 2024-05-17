@@ -10,6 +10,7 @@ opponents pawns stuck on their move
 """
 
 import numpy as np
+import random
 
 """
 The board is represented as a vector of real numbers to be a valid input to the neural network.
@@ -19,7 +20,7 @@ of the board in row major order. 0 is an empty space, 1 is a white pawn, and 2 i
 
 """
 For reference, the output vector will be composed of 9 values, one for each cell on the board.
-A 0 indicates that moving a pawn to that cell is not a valid move, while a 1 indicates the moving a pawn there is optimal.
+A 0 indicates that moving a pawn to that cell is not a valid move, while a 1 indicates that moving a pawn there is optimal.
 """
 
 ## -------- Part 1 : Formalization of Hexapawn ---------- ##
@@ -226,22 +227,21 @@ class Layer:
         "Initialize a layer in the neural network"
         np.random.seed(10)
         self.neurons = neurons
-        self.weights = 2 * np.random.random((num_inputs, neurons)) - 1  # multiply by 2 to get range to be [0.0, 2.0] 
-        self.biases = 2 * np.random.random(neurons) - 1                 # subtract 1 to get range to be [-1.0, 1.0] 
+        self.weights = 2 * np.random.random((num_inputs, neurons)) - 1  # multiply by 2 & subtract 1 to get range to be [-1.0, 1.0] 
+        self.biases = 2 * np.random.random(neurons) - 1                 
         
 class NeuralNetwork:
     def __init__(self, num_layers, layers):
         "Initialize a neural network with the provided number of layers"
         for i in range(num_layers):
-            print(i)
             setattr(self, f"layer{i+1}", layers[i])
 
-## -------------- Part 4: Classify Function ----------------- ##
-def classify(network, inputs, activation_function):
+## -------------- Part 4: Classify Function ------------------ ##
+def classify(network, input, activation_function):
     "Returns the output of each layer of the provided neural network using the given activation function"
     
     # compute the output of each layer
-    output1 = activation_function(np.dot(network.layer1.weights, inputs)) + network.layer1.biases
+    output1 = activation_function(np.dot(network.layer1.weights, input)) + network.layer1.biases
     output2 = activation_function(np.dot(network.layer2.weights, output1)) + network.layer2.biases
     
     return output1, output2
@@ -254,3 +254,56 @@ def sigmoid(x):
 def ReLU(x):
     "Rectified Linear Unit - Returns 0 if x is negative, otherwise returns x"
     return np.maximum(0, x)
+
+## --------------- Part 5: Back Propagation ----------------- ##
+def update_weights(network, expected_output, input, activation_function):
+    layer1_output, final_output = classify(network, input, activation_function)
+    
+    learning_rate = 0.2    # no method to selecting this value - may need to be tuned later on
+    
+    if activation_function == sigmoid:
+        deriv_activation_function = derivative_sigmoid
+    elif activation_function == ReLU:
+        deriv_activation_function = derivative_ReLU
+    else:
+        print("Invalid activation function")
+        return False
+    
+    # work in reverse order - compute error for the final output first then the hidden layer error
+    delta2 = 2 * (expected_output - final_output) * deriv_activation_function(final_output)         # questioning the input to the activation function
+    delta1 = delta2.dot(network.layer2.weights.T) * deriv_activation_function(layer1_output)
+    
+    # update network's weights and biases - add to the old weights since I did expected output - actual output
+    network.layer1.weights += learning_rate * np.outer(input, delta1)
+    network.layer1.biases += learning_rate * np.sum(delta1, axis=0)
+    
+    network.layer2.weights += learning_rate * np.outer(layer1_output, delta2)
+    network.layer2.biases += learning_rate * np.sum(delta2, axis=0)
+    
+    return True
+
+def derivative_sigmoid(x):
+    sigma = 1 / (1+ np.exp(-x))
+    return np.dot(sigma, (1 - sigma))
+
+# not sure this is necessary, derivative appears the same as the original function?
+def derivative_ReLU(x):
+    x_derivative = []
+    for input in x:
+        if input > 0:
+            x_derivative.append(1)
+        else:
+            x_derivative.append(0)
+    return x_derivative
+
+def train_network(network, inputs, outputs, activation_function, num_rounds):
+    "Trains the neural network using the provided inputs and outputs"
+    
+    for i in range(num_rounds):
+        pairs = list(zip(inputs, outputs))
+        random.shuffle(pairs)
+        shuffled_inputs, shuffled_outputs = zip(*pairs)
+    
+        for input_data, target_output in zip(shuffled_inputs, shuffled_outputs):
+            # print("Input: ", input_data, "Target: ", target_output)
+            update_weights(network, target_output, input_data, activation_function)

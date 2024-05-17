@@ -4,6 +4,7 @@
 # Very early on - will eventually be used as the main script to run the program
 
 from hexapawn import *
+import random
 
 initial_state = [0, -1, -1, -1, 0, 0, 0, 1, 1, 1]
 
@@ -53,3 +54,66 @@ print("ReLU - Vector Input:", inputs, "Output:", ReLU(inputs))
 
 print("ReLU NN Output: ", classify(network, inputs, ReLU))
 print("Sigmoid NN Output: ", classify(network, inputs, sigmoid))
+
+# Part 5
+print("Derivative of Sigmoid:", derivative_sigmoid(inputs))
+print("Derivative of ReLU:", derivative_ReLU(inputs))
+
+print("------------------Initial Weights & Biases--------------------")
+print("Layer 1 weights: ", network.layer1.weights, "\nLayer 2 weights:", network.layer2.weights)
+print("\nLayer 1 Biases:", network.layer1.biases, "\nLayer 2 Biases:", network.layer2.biases)
+output = np.array([0, 1])
+update_weights(network, output, inputs, sigmoid)
+
+print("-------------------Updated Weights & Biases-------------------")
+print("\nLayer 1 weights: ", network.layer1.weights, "\nLayer 2 weights:", network.layer2.weights)
+print("\nLayer 1 Biases:", network.layer1.biases, "\nLayer 2 Biases:", network.layer2.biases)
+
+print("----------------Two-Bit Adder Network------------------------")
+layer1 = Layer(neurons=2, num_inputs=2)
+layer2 = Layer(neurons=2, num_inputs=2)
+AdderNetwork = NeuralNetwork(num_layers=2, layers=[layer1, layer2])
+print("Initial Network")
+print("Layer 1 Weights: ", AdderNetwork.layer1.weights, "Biases: ", AdderNetwork.layer1.biases)
+print("Layer 2 Weights: ", AdderNetwork.layer2.weights, "Biases: ", AdderNetwork.layer2.biases)
+
+inputs = [[0,0], [0,1], [1,0], [1,1]]       
+outputs = [[0,0], [0,1], [0,1], [1,0]]
+
+# randomize the input order
+pairs = list(zip(inputs, outputs))
+random.shuffle(pairs)                               # Shuffle the pairs
+shuffled_inputs, shuffled_outputs = zip(*pairs)     # Unpack the pairs back into separate lists
+
+print("\nTraining Neural Network...")
+# for i in range(5):
+#     update_weights(AdderNetwork, outputs[0], inputs[0], ReLU)  
+#     update_weights(AdderNetwork, outputs[1], inputs[1], ReLU)  
+#     update_weights(AdderNetwork, outputs[2], inputs[2], ReLU)  
+#     update_weights(AdderNetwork, outputs[3], inputs[3], ReLU) 
+train_network(AdderNetwork, inputs, outputs, ReLU, 10)
+print("...Weights and Biases Updated!")
+print("\nFinal Network")
+print("Layer 1 Weights: ", AdderNetwork.layer1.weights, "Biases: ", AdderNetwork.layer1.biases)
+print("Layer 2 Weights: ", AdderNetwork.layer2.weights, "Biases: ", AdderNetwork.layer2.biases)
+
+print("\n-------------Check Classification, ReLU Activation-----------------------")
+layer10, final_0 = classify(AdderNetwork, inputs[0], ReLU)
+print("Expected Output: ", outputs[0], "Actual: ", final_0)
+layer11, final_1 = classify(AdderNetwork, inputs[1], ReLU)
+print("Expected Output: ", outputs[1], "Actual: ", final_1)
+layer12, final_2 = classify(AdderNetwork, inputs[2], ReLU)
+print("Expected Output: ", outputs[2], "Actual: ", final_2)
+layer13, final_3 = classify(AdderNetwork, inputs[3], ReLU)
+print("Expected Output: ", outputs[3], "Actual: ", final_3)
+
+train_network(network, inputs, outputs, sigmoid, 100)
+print("\n-----------Check Classification, Signmoid Activation--------------------")
+layer10, final_0 = classify(AdderNetwork, inputs[0], sigmoid)
+print("Expected Output: ", outputs[0], "Actual: ", final_0)
+layer11, final_1 = classify(AdderNetwork, inputs[1], sigmoid)
+print("Expected Output: ", outputs[1], "Actual: ", final_1)
+layer12, final_2 = classify(AdderNetwork, inputs[2], sigmoid)
+print("Expected Output: ", outputs[2], "Actual: ", final_2)
+layer13, final_3 = classify(AdderNetwork, inputs[3], sigmoid)
+print("Expected Output: ", outputs[3], "Actual: ", final_3)
