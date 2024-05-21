@@ -135,7 +135,7 @@ def is_terminal(state):
     # check if either the black or white pawns are on the other side of the board
     if any(element == 1 for element in state[1:4]):
         game_over = True
-    elif any(element == -1 for element in state[8:10]):
+    elif any(element == -1 for element in state[7:10]):
         game_over = True
     
     # check if the other player can make a move
@@ -241,8 +241,8 @@ def classify(network, input, activation_function):
     "Returns the output of each layer of the provided neural network using the given activation function"
     
     # compute the output of each layer
-    output1 = activation_function(np.dot(network.layer1.weights, input)) + network.layer1.biases
-    output2 = activation_function(np.dot(network.layer2.weights, output1)) + network.layer2.biases
+    output1 = activation_function(np.dot(network.layer1.weights, input) + network.layer1.biases)
+    output2 = activation_function(np.dot(network.layer2.weights, output1) + network.layer2.biases)
     
     return output1, output2
 
@@ -253,13 +253,13 @@ def sigmoid(x):
 
 def ReLU(x):
     "Rectified Linear Unit - Returns 0 if x is negative, otherwise returns x"
-    return np.maximum(0, x)
+    return np.maximum(x, 0)
 
 ## --------------- Part 5: Back Propagation ----------------- ##
 def update_weights(network, expected_output, input, activation_function):
     layer1_output, final_output = classify(network, input, activation_function)
     
-    learning_rate = 0.2    # no method to selecting this value - may need to be tuned later on
+    learning_rate = 0.5   # no method to selecting this value - may need to be tuned later on
     
     if activation_function == sigmoid:
         deriv_activation_function = derivative_sigmoid
@@ -271,20 +271,20 @@ def update_weights(network, expected_output, input, activation_function):
     
     # work in reverse order - compute error for the final output first then the hidden layer error
     delta2 = 2 * (expected_output - final_output) * deriv_activation_function(final_output)         # questioning the input to the activation function
-    delta1 = delta2.dot(network.layer2.weights.T) * deriv_activation_function(layer1_output)
+    # double check the layer used here
+    delta1 = delta2.dot(network.layer1.weights.T) * deriv_activation_function(layer1_output)
     
     # update network's weights and biases - add to the old weights since I did expected output - actual output
-    network.layer1.weights += learning_rate * np.outer(input, delta1)
-    network.layer1.biases += learning_rate * np.sum(delta1, axis=0)
+    network.layer1.weights += learning_rate * np.outer(delta1, input)
+    network.layer1.biases += learning_rate * delta1 # np.sum(delta1, axis=0)
     
-    network.layer2.weights += learning_rate * np.outer(layer1_output, delta2)
-    network.layer2.biases += learning_rate * np.sum(delta2, axis=0)
+    network.layer2.weights += learning_rate * np.outer(delta2, layer1_output)
     
     return True
 
 def derivative_sigmoid(x):
     sigma = 1 / (1+ np.exp(-x))
-    return np.dot(sigma, (1 - sigma))
+    return sigma * (1 - sigma)
 
 # not sure this is necessary, derivative appears the same as the original function?
 def derivative_ReLU(x):
@@ -305,5 +305,4 @@ def train_network(network, inputs, outputs, activation_function, num_rounds):
         shuffled_inputs, shuffled_outputs = zip(*pairs)
     
         for input_data, target_output in zip(shuffled_inputs, shuffled_outputs):
-            # print("Input: ", input_data, "Target: ", target_output)
             update_weights(network, target_output, input_data, activation_function)
