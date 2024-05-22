@@ -225,9 +225,9 @@ def policy_table(state):
 class Layer:
     def __init__(self, neurons, num_inputs):
         "Initialize a layer in the neural network"
-        np.random.seed(10)
+        np.random.seed(1000)
         self.neurons = neurons
-        self.weights = 2 * np.random.random((num_inputs, neurons)) - 1  # multiply by 2 & subtract 1 to get range to be [-1.0, 1.0] 
+        self.weights = 2 * np.random.random((num_inputs * neurons)) - 1  # multiply by 2 & subtract 1 to get range to be [-1.0, 1.0] 
         self.biases = 2 * np.random.random(neurons) - 1                 
         
 class NeuralNetwork:
@@ -237,14 +237,19 @@ class NeuralNetwork:
             setattr(self, f"layer{i+1}", layers[i])
 
 ## -------------- Part 4: Classify Function ------------------ ##
-def classify(network, input, activation_function):
+def classify(network, input):
     "Returns the output of each layer of the provided neural network using the given activation function"
     
-    # compute the output of each layer
-    output1 = activation_function(np.dot(network.layer1.weights, input) + network.layer1.biases)
-    output2 = activation_function(np.dot(network.layer2.weights, output1) + network.layer2.biases)
+    # compute the output of each layer - weights are organized as [w11, w12; w21, w22] therefore w11 and w21 correspond to first output of hidden layer
+    output11 = ReLU(np.dot(np.array([network.layer1.weights[0],network.layer1.weights[2]]).T, input) + network.layer1.biases[0])
+    output12 = ReLU(np.dot(np.array([network.layer1.weights[1], network.layer1.weights[3]]).T, input) + network.layer1.biases[1])
     
-    return output1, output2
+    # output21 = sigmoid(np.dot(network.layer2.weights[0:2].T, [output11, output12]) + network.layer2.biases[0])
+    # output22 = sigmoid(np.dot(network.layer2.weights[2:4].T, [output11, output12]) + network.layer2.biases[1])
+    output21 = sigmoid(np.dot(np.array([network.layer2.weights[0], network.layer2.weights[2]]).T, [output11, output12]) + network.layer2.biases[0])
+    output22 = sigmoid(np.dot(np.array([network.layer2.weights[1], network.layer2.weights[3]]).T, [output11, output12]) + network.layer2.biases[1])
+    
+    return output11, output12, output21, output22
 
 # activation functions
 def sigmoid(x):
@@ -253,13 +258,89 @@ def sigmoid(x):
 
 def ReLU(x):
     "Rectified Linear Unit - Returns 0 if x is negative, otherwise returns x"
-    return np.maximum(x, 0)
+    return np.maximum(0, x)
 
 ## --------------- Part 5: Back Propagation ----------------- ##
-def update_weights(network, expected_output, input, activation_function):
-    layer1_output, final_output = classify(network, input, activation_function)
+def gradient_descent(network, expected_output, input):
+    h1, h2, z1, z2 = classify(network, input)
     
-    learning_rate = 0.5   # no method to selecting this value - may need to be tuned later on
+    y1, y2 = expected_output
+    w11, w12, w21, w22 = network.layer1.weights
+    u11, u12, u21, u22 = network.layer2.weights
+    b1, b2 = network.layer1.biases
+    b3, b4 = network.layer2.biases
+    
+    # derivative of the loss to the outputs
+    dLdz1 = 2 * (z1 - y1)
+    dLdz2 = 2 * (z2 - y2) 
+    
+    # loss to the weights of the output layer
+    dLdu11 = dLdz1 * derivative_sigmoid(u11*h1 + u21*h2 + b3) * h1
+    dLdu12 = dLdz2 * derivative_sigmoid(u12*h1 + u22*h2 + b4) * h1
+    
+    dLdu21 = dLdz1 * derivative_sigmoid(u11*h1 + u21*h2 + b3) * h2
+    dLdu22 = dLdz2 * derivative_sigmoid(u12*h1 + u22*h2 + b4) * h2
+
+    # loss to biases of output layer
+    dLdb3 = dLdz1 * derivative_sigmoid(u11*h1 + u21*h2 + b3)
+    dLdb4 = dLdz2 * derivative_sigmoid(u12*h1 + u22*h2 + b4)
+    
+    # loss to outputs of first layer
+    dLdh1 = dLdz1 * derivative_sigmoid(u11*h1 + u21*h2 + b3) * u11 + dLdz2 * derivative_sigmoid(u12*h1 + u22*h2 + b4) * u12
+    dLdh2 = dLdz1 * derivative_sigmoid(u11*h1 + u21*h2 + b3) * u21 + dLdz2 * derivative_sigmoid(u12*h1 + u22*h2 + b4) * u22
+    
+    # loss to weights of first layer
+    dLdw11 = dLdh1 * derivative_ReLU(w11*input[0] + w21*input[1] + b1) * input[0]
+    dLdw12 = dLdh2 * derivative_ReLU(w12*input[0] + w22*input[1] + b2) * input[0]
+    
+    dLdw21 = dLdh1 * derivative_ReLU(w11*input[0] + w21*input[1] + b1) * input[1]
+    dLdw22 = dLdh2 * derivative_ReLU(w12*input[0] + w22*input[1] + b2) * input[1]
+    
+    # loss to biases of first layer
+    dLdb1 = dLdh1 * derivative_ReLU(w11*input[0] + w21*input[1] + b1)
+    dLdb2 = dLdh2 * derivative_ReLU(w12*input[0] + w22*input[1] + b2)
+    
+    return np.array([w11, w12, w21, w22, u11, u12, u21, u22, b1, b2, b3, b4] ), np.array([dLdw11, dLdw12, dLdw21, dLdw22, dLdu11, dLdu12, dLdu21, dLdu22, dLdb1, dLdb2, dLdb3, dLdb4])
+    
+def update_weights(network, expected_output, input):
+    
+    weights_biases, changes = gradient_descent(network, expected_output, input)
+    
+    alpha = 0.8   # seems very high but is working for 3/4 cases for two-bit
+    # update network's weights and biases - add to the old weights since I did expected output - actual output
+    weights_biases -= alpha * changes
+    
+    # update network weights and biases with the new weights
+    network.layer1.weights = weights_biases[0:4]
+    network.layer1.biases = weights_biases[8:10]
+    
+    network.layer2.weights = weights_biases[4:8]
+    network.layer2.biases = weights_biases[10:12]
+
+def derivative_sigmoid(x):
+    sigma = 1 / (1 + np.exp(-x))
+    return sigma * (1 - sigma)
+
+def derivative_ReLU(x):
+    # dx = np.heaviside(x, 1)
+    return np.where(x > 0, 1, 0)
+
+def train_network(network, inputs, outputs, num_rounds):
+    "Trains the neural network using the provided inputs and outputs"
+    
+    for i in range(num_rounds):
+        pairs = list(zip(inputs, outputs))
+        random.shuffle(pairs)
+        shuffled_inputs, shuffled_outputs = zip(*pairs)
+    
+        for input_data, target_output in zip(shuffled_inputs, shuffled_outputs):
+            update_weights(network, target_output, input_data)
+            
+## --------------- Part 6: Hexapawn Neural Network ----------------- ##
+def update_weights_hex(network, expected_output, input, activation_function):
+    h1, h2, z1, z2 = classify(network, input)
+    
+    alpha = 0.25
     
     if activation_function == sigmoid:
         deriv_activation_function = derivative_sigmoid
@@ -270,39 +351,18 @@ def update_weights(network, expected_output, input, activation_function):
         return False
     
     # work in reverse order - compute error for the final output first then the hidden layer error
-    delta2 = 2 * (expected_output - final_output) * deriv_activation_function(final_output)         # questioning the input to the activation function
+    delta2 = 2 * (expected_output - np.array([z1, z2])) * deriv_activation_function(np.array([h1, h2]))     
     # double check the layer used here
-    delta1 = delta2.dot(network.layer1.weights.T) * deriv_activation_function(layer1_output)
+    delta1 = delta2.dot(network.layer1.weights.T) * deriv_activation_function(input)
     
     # update network's weights and biases - add to the old weights since I did expected output - actual output
-    network.layer1.weights += learning_rate * np.outer(delta1, input)
-    network.layer1.biases += learning_rate * delta1 # np.sum(delta1, axis=0)
+    network.layer1.weights += alpha * np.outer(input, delta1)
+    network.layer1.biases += alpha * np.sum(delta1, axis=0)
     
-    network.layer2.weights += learning_rate * np.outer(delta2, layer1_output)
+    network.layer2.weights += alpha * np.outer(z2, delta2)
+    network.layer2.biases += alpha * np.sum(delta2, axis=0)
     
-    return True
-
-def derivative_sigmoid(x):
-    sigma = 1 / (1+ np.exp(-x))
-    return sigma * (1 - sigma)
-
-# not sure this is necessary, derivative appears the same as the original function?
-def derivative_ReLU(x):
-    x_derivative = []
-    for input in x:
-        if input > 0:
-            x_derivative.append(1)
-        else:
-            x_derivative.append(0)
-    return x_derivative
-
-def train_network(network, inputs, outputs, activation_function, num_rounds):
-    "Trains the neural network using the provided inputs and outputs"
+    network.second_layer.weights += alpha * np.outer(z1, delta2)
+    network.second_layer.biases += alpha * np.sum(delta2, axis=0)
     
-    for i in range(num_rounds):
-        pairs = list(zip(inputs, outputs))
-        random.shuffle(pairs)
-        shuffled_inputs, shuffled_outputs = zip(*pairs)
-    
-        for input_data, target_output in zip(shuffled_inputs, shuffled_outputs):
-            update_weights(network, target_output, input_data, activation_function)
+    return 0
