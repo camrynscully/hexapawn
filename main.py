@@ -95,7 +95,7 @@ layer2 = Layer(neurons=2, num_inputs=2)
 AdderNetworkSig = NeuralNetwork(num_layers=2, layers=[layer1, layer2])
 
 print("\nTraining Neural Network...")
-train_network(AdderNetworkSig, inputs, outputs, 1000)
+train_network(AdderNetworkSig, inputs, outputs, sigmoid, 1000)
 print("...Weights and Biases Updated!")
 print("\nFinal Network")
 print("Layer 1 Weights: ", AdderNetworkSig.layer1.weights, "Biases: ", AdderNetworkSig.layer1.biases)
@@ -125,6 +125,8 @@ HexapawnNetwork = NeuralNetwork(num_layers=2, layers=[l1, l2])
 # print("\nBiases:", HexapawnNetwork.layer2.biases)
 
 input1 = [1,-1,-1,-1,0,0,0,1,1,1]
+output1 = [0,0,0,1,1,1,0,0,0]
+# update_weights_hex(HexapawnNetwork, output1, input1)
 # h1, h2, y1, y2 = classify(HexapawnNetwork, input1)
 
 

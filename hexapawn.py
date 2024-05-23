@@ -244,8 +244,6 @@ def classify(network, input):
     output11 = ReLU(np.dot(np.array([network.layer1.weights[0],network.layer1.weights[2]]).T, input) + network.layer1.biases[0])
     output12 = ReLU(np.dot(np.array([network.layer1.weights[1], network.layer1.weights[3]]).T, input) + network.layer1.biases[1])
     
-    # output21 = sigmoid(np.dot(network.layer2.weights[0:2].T, [output11, output12]) + network.layer2.biases[0])
-    # output22 = sigmoid(np.dot(network.layer2.weights[2:4].T, [output11, output12]) + network.layer2.biases[1])
     output21 = sigmoid(np.dot(np.array([network.layer2.weights[0], network.layer2.weights[2]]).T, [output11, output12]) + network.layer2.biases[0])
     output22 = sigmoid(np.dot(np.array([network.layer2.weights[1], network.layer2.weights[3]]).T, [output11, output12]) + network.layer2.biases[1])
     
@@ -261,7 +259,15 @@ def ReLU(x):
     return np.maximum(0, x)
 
 ## --------------- Part 5: Back Propagation ----------------- ##
-def gradient_descent(network, expected_output, input):
+def gradient_descent(network, expected_output, input, activation_function):
+    
+    if activation_function == sigmoid:
+        deriv_activation_function = derivative_sigmoid
+    elif activation_function == ReLU:
+        deriv_activation_function = derivative_ReLU
+    else:
+        print("Invalid activation function")
+    
     h1, h2, z1, z2 = classify(network, input)
     
     y1, y2 = expected_output
@@ -275,38 +281,38 @@ def gradient_descent(network, expected_output, input):
     dLdz2 = 2 * (z2 - y2) 
     
     # loss to the weights of the output layer
-    dLdu11 = dLdz1 * derivative_sigmoid(u11*h1 + u21*h2 + b3) * h1
-    dLdu12 = dLdz2 * derivative_sigmoid(u12*h1 + u22*h2 + b4) * h1
+    dLdu11 = dLdz1 * deriv_activation_function(u11*h1 + u21*h2 + b3) * h1
+    dLdu12 = dLdz2 * deriv_activation_function(u12*h1 + u22*h2 + b4) * h1
     
-    dLdu21 = dLdz1 * derivative_sigmoid(u11*h1 + u21*h2 + b3) * h2
-    dLdu22 = dLdz2 * derivative_sigmoid(u12*h1 + u22*h2 + b4) * h2
+    dLdu21 = dLdz1 * deriv_activation_function(u11*h1 + u21*h2 + b3) * h2
+    dLdu22 = dLdz2 * deriv_activation_function(u12*h1 + u22*h2 + b4) * h2
 
     # loss to biases of output layer
-    dLdb3 = dLdz1 * derivative_sigmoid(u11*h1 + u21*h2 + b3)
-    dLdb4 = dLdz2 * derivative_sigmoid(u12*h1 + u22*h2 + b4)
+    dLdb3 = dLdz1 * deriv_activation_function(u11*h1 + u21*h2 + b3)
+    dLdb4 = dLdz2 * deriv_activation_function(u12*h1 + u22*h2 + b4)
     
     # loss to outputs of first layer
-    dLdh1 = dLdz1 * derivative_sigmoid(u11*h1 + u21*h2 + b3) * u11 + dLdz2 * derivative_sigmoid(u12*h1 + u22*h2 + b4) * u12
-    dLdh2 = dLdz1 * derivative_sigmoid(u11*h1 + u21*h2 + b3) * u21 + dLdz2 * derivative_sigmoid(u12*h1 + u22*h2 + b4) * u22
+    dLdh1 = dLdz1 * deriv_activation_function(u11*h1 + u21*h2 + b3) * u11 + dLdz2 * deriv_activation_function(u12*h1 + u22*h2 + b4) * u12
+    dLdh2 = dLdz1 * deriv_activation_function(u11*h1 + u21*h2 + b3) * u21 + dLdz2 * deriv_activation_function(u12*h1 + u22*h2 + b4) * u22
     
     # loss to weights of first layer
-    dLdw11 = dLdh1 * derivative_ReLU(w11*input[0] + w21*input[1] + b1) * input[0]
-    dLdw12 = dLdh2 * derivative_ReLU(w12*input[0] + w22*input[1] + b2) * input[0]
+    dLdw11 = dLdh1 * deriv_activation_function(w11*input[0] + w21*input[1] + b1) * input[0]
+    dLdw12 = dLdh2 * deriv_activation_function(w12*input[0] + w22*input[1] + b2) * input[0]
     
-    dLdw21 = dLdh1 * derivative_ReLU(w11*input[0] + w21*input[1] + b1) * input[1]
-    dLdw22 = dLdh2 * derivative_ReLU(w12*input[0] + w22*input[1] + b2) * input[1]
+    dLdw21 = dLdh1 * deriv_activation_function(w11*input[0] + w21*input[1] + b1) * input[1]
+    dLdw22 = dLdh2 * deriv_activation_function(w12*input[0] + w22*input[1] + b2) * input[1]
     
     # loss to biases of first layer
-    dLdb1 = dLdh1 * derivative_ReLU(w11*input[0] + w21*input[1] + b1)
-    dLdb2 = dLdh2 * derivative_ReLU(w12*input[0] + w22*input[1] + b2)
+    dLdb1 = dLdh1 * derivative_sigmoid(w11*input[0] + w21*input[1] + b1)
+    dLdb2 = dLdh2 * derivative_sigmoid(w12*input[0] + w22*input[1] + b2)
     
     return np.array([w11, w12, w21, w22, u11, u12, u21, u22, b1, b2, b3, b4] ), np.array([dLdw11, dLdw12, dLdw21, dLdw22, dLdu11, dLdu12, dLdu21, dLdu22, dLdb1, dLdb2, dLdb3, dLdb4])
     
-def update_weights(network, expected_output, input):
+def update_weights(network, expected_output, input, activation_function):
     
-    weights_biases, changes = gradient_descent(network, expected_output, input)
+    weights_biases, changes = gradient_descent(network, expected_output, input, activation_function)
     
-    alpha = 0.8   # seems very high but is working for 3/4 cases for two-bit
+    alpha = 0.6   # seems very high but is working for 3/4 cases for two-bit
     # update network's weights and biases - add to the old weights since I did expected output - actual output
     weights_biases -= alpha * changes
     
@@ -322,10 +328,9 @@ def derivative_sigmoid(x):
     return sigma * (1 - sigma)
 
 def derivative_ReLU(x):
-    # dx = np.heaviside(x, 1)
     return np.where(x > 0, 1, 0)
 
-def train_network(network, inputs, outputs, num_rounds):
+def train_network(network, inputs, outputs, activation_function, num_rounds):
     "Trains the neural network using the provided inputs and outputs"
     
     for i in range(num_rounds):
@@ -334,35 +339,28 @@ def train_network(network, inputs, outputs, num_rounds):
         shuffled_inputs, shuffled_outputs = zip(*pairs)
     
         for input_data, target_output in zip(shuffled_inputs, shuffled_outputs):
-            update_weights(network, target_output, input_data)
+            update_weights(network, target_output, input_data, activation_function)
             
 ## --------------- Part 6: Hexapawn Neural Network ----------------- ##
-def update_weights_hex(network, expected_output, input, activation_function):
-    h1, h2, z1, z2 = classify(network, input)
+def update_weights_hex(network, expected_output, input):
+    
+    classify_hex(network, input)
     
     alpha = 0.25
     
-    if activation_function == sigmoid:
-        deriv_activation_function = derivative_sigmoid
-    elif activation_function == ReLU:
-        deriv_activation_function = derivative_ReLU
-    else:
-        print("Invalid activation function")
-        return False
+    # # work in reverse order - compute error for the final output first then the hidden layer error
+    # delta2 = 2 * (expected_output - np.array([z1, z2])) * derivative_sigmoid(np.array([h1, h2]))     
+    # # double check the layer used here
+    # delta1 = delta2.dot(network.layer1.weights.T) * derivative_ReLU(input)
     
-    # work in reverse order - compute error for the final output first then the hidden layer error
-    delta2 = 2 * (expected_output - np.array([z1, z2])) * deriv_activation_function(np.array([h1, h2]))     
-    # double check the layer used here
-    delta1 = delta2.dot(network.layer1.weights.T) * deriv_activation_function(input)
+    # # update network's weights and biases - add to the old weights since I did expected output - actual output
+    # network.layer1.weights += alpha * np.outer(input, delta1)
+    # network.layer1.biases += alpha * np.sum(delta1, axis=0)
     
-    # update network's weights and biases - add to the old weights since I did expected output - actual output
-    network.layer1.weights += alpha * np.outer(input, delta1)
-    network.layer1.biases += alpha * np.sum(delta1, axis=0)
+    # network.layer2.weights += alpha * np.outer(z2, delta2)
+    # network.layer2.biases += alpha * np.sum(delta2, axis=0)
     
-    network.layer2.weights += alpha * np.outer(z2, delta2)
-    network.layer2.biases += alpha * np.sum(delta2, axis=0)
-    
-    network.second_layer.weights += alpha * np.outer(z1, delta2)
-    network.second_layer.biases += alpha * np.sum(delta2, axis=0)
+    # network.second_layer.weights += alpha * np.outer(z1, delta2)
+    # network.second_layer.biases += alpha * np.sum(delta2, axis=0)
     
     return 0
